@@ -1,0 +1,35 @@
+def _build_plot_user_message(
+    *,
+    premise: str,
+    genre: str,
+    world: WorldOutput,
+    characters: CharactersOutput,
+) -> str:
+    genre_text = genre if genre.strip() else "(未指定)"
+    character_lines = [
+        f"  - {c.character_id}({c.name},{c.role}):{c.archetype} — {c.motivation}"
+        for c in characters.characters
+    ]
+    # 补强1(v2 W3.5):命名锁定表前置注入(漂移源头 —— plot 不传 background,
+    # 父亲名等 buried 命名在此被 deepseek 改写)。无 buried 名时返 "" 不扰动。
+    return (
+        build_name_lock_header(characters) + "## 用户输入\n\n"
+        f"- 一句话设定(premise):{premise}\n"
+        f"- 题材(genre):{genre_text}\n\n"
+        "## 上游产出:世界观摘要(world,只读)\n\n"
+        f"- setting:{world.setting}\n"
+        f"- factions:{world.factions}\n"
+        f"- unique_rules:{world.unique_rules}\n\n"
+        "## 主线写前世界规则合同(HARD)\n\n"
+        f"- 权威规则原文:{world.unique_rules}\n"
+        "- 每次使用机制都要逐项保持原规则的触发条件、作用对象、数量 / 范围和效果。\n"
+        "- 若规则自动决定对象,角色不得选择自己、同伴、指定人物、群体、类别或概念;"
+        "完成触发条件不等于可以指定结果。\n"
+        "- 多次使用必须是多次独立合规触发,每次仍按原规则作用于一个对象;"
+        "不得合并成范围抹除或获得选人能力。\n"
+        "- 反派计划也受规则约束;除非主线明确写成误判、妄想或因规则不允许而无法启动,"
+        "否则失败的计划也不能承诺规则外能力。\n\n"
+        "## 上游产出:核心人设(characters,只读)\n\n"
+        + "\n".join(character_lines)
+        + "\n\n请生成本书的主线段(核心冲突 + 4-7 阶段 + 3-6 关键转折 + 3-6 长伏笔种子 + character_arcs)。"
+    )

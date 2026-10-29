@@ -1,0 +1,40 @@
+name: CI
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    env:
+      LLM_PROVIDER: mock
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      ANONYMIZED_TELEMETRY: 'False'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.10.12'
+      - run: uv sync --locked --python 3.11
+      - run: mkdir -p workspaces
+      - run: uv run pytest -q
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.0.5'
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - run: pnpm test
+        working-directory: web
+      - run: pnpm lint
+        working-directory: web
+      - run: pnpm build
+        working-directory: web

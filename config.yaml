@@ -1,0 +1,769 @@
+# 引擎默认 LLM Profile + Routing 配置(P3-B-01 引入)
+# ====================================================
+#
+# 加载入口:src/core/config_loader.py:load_writer_profiles_config
+# 数据模型:src/core/models/writer_profile.py:WriterProfile
+#          src/core/models/routing.py:RoutingConfig + WriterProfilesConfig
+#
+# 三层配置覆盖顺序(对齐 PROJECT_SPEC §10.1):
+# 1. 引擎默认:本文件
+# 2. 工作区覆盖:workspaces/<name>/project.yaml(P3-B-02 service 层叠加)
+# 3. 运行时覆盖:CLI / API 参数 / WriterProfileSelector(P3-F-03)
+#
+# 维护人环境约束(P3-plan §"维护人环境约束"):
+# - 维护人无 Claude API key,默认走本地 ollama qwen-novel
+# - cloud_quality / cloud_premium profile 完整定义但不作为 default
+# - 路由规则 arc_finale / tension>=9 升级 cloud_premium 仅在有 API key 时生效
+
+# POST-V8 S2-0R 单模型活动配置。维护人未来只改 active 一行选择一臂；null 表示
+# 当前没有获批的 Provider 活动。三份 manifest 都是 Provider-0 冻结配置；
+# selection_test 下的 max_physical_requests/max_configured_rmb 只供未来专用
+# 三模型选型 runner 使用，是维护人愿意承担的最大损失熔断值，不是费用预测，
+# 不保证活动完成，也绝不成为普通 UI/正式生产 Run 的费用上限。当前必须为
+# 0/0，且 active 必须为 null。
+# 工作区 project.yaml、agent route、force_profile 与 default fallback 均无权
+# 覆盖本段。
+run_model_manifest:
+  active: null
+  manifests:
+    hy3:
+      manifest_id: hy3
+      provider_authority: tencent_tokenhub
+      base_url: https://tokenhub.tencentmaas.com/v1
+      host: tokenhub.tencentmaas.com
+      region: ap-guangzhou
+      workspace_authority_id: tencent-tokenhub-ap-guangzhou
+      exact_model_id: hy3
+      credential_source_id: tokenhub_api_key
+      transport: openai_chat_completions
+      completion_limit_wire_field: max_completion_tokens
+      structured_mode: native_json_schema_strict
+      structured_schema_dialect: tokenhub_hy3_chat_json_schema_v1
+      context_window: 256000
+      tiers:
+        low:
+          provider_input_guard_tokens: 131072
+          max_completion_tokens: 12096
+          temperature: 0.7
+          thinking_request:
+            thinking: {type: enabled, budget_tokens: 4096}
+            reasoning_effort: low
+        medium:
+          provider_input_guard_tokens: 192000
+          max_completion_tokens: 24384
+          temperature: 0.7
+          thinking_request:
+            thinking: {type: enabled, budget_tokens: 16384}
+            reasoning_effort: medium
+        xhigh:
+          provider_input_guard_tokens: 192000
+          max_completion_tokens: 40768
+          temperature: 0.7
+          thinking_request:
+            thinking: {type: enabled, budget_tokens: 32768}
+            reasoning_effort: high
+      input_price_rmb_per_million: 1
+      output_price_rmb_per_million: 4
+      cache_billing_policy: no_discount
+      selection_test:
+        activity_scope: selection_test
+        max_physical_requests: 0
+        max_configured_rmb: 0
+      fallback: false
+
+    deepseek-v4-flash:
+      manifest_id: deepseek-v4-flash
+      provider_authority: deepseek_official
+      base_url: https://api.deepseek.com
+      host: api.deepseek.com
+      region: deepseek-official-api
+      workspace_authority_id: deepseek-official-account
+      exact_model_id: deepseek-v4-flash
+      credential_source_id: deepseek_api_key
+      transport: openai_chat_completions
+      completion_limit_wire_field: max_tokens
+      structured_mode: json_object_local_schema
+      context_window: 1000000
+      tiers:
+        low:
+          provider_input_guard_tokens: 131072
+          max_completion_tokens: 12096
+          temperature: null
+          thinking_request:
+            thinking: {type: enabled}
+            reasoning_effort: low
+        medium:
+          provider_input_guard_tokens: 524288
+          max_completion_tokens: 24384
+          temperature: null
+          thinking_request:
+            thinking: {type: enabled}
+            reasoning_effort: high
+        xhigh:
+          provider_input_guard_tokens: 524288
+          max_completion_tokens: 40768
+          temperature: null
+          thinking_request:
+            thinking: {type: enabled}
+            reasoning_effort: max
+      # 2026-08-28 DeepSeek 官网运行日峰值普通实时价；selection-test
+      # 一律按峰值且不计缓存优惠，不能沿用 S2-0 的历史 ¥1/¥2 基准。
+      input_price_rmb_per_million: 3
+      output_price_rmb_per_million: 9
+      cache_billing_policy: no_discount
+      selection_test:
+        activity_scope: selection_test
+        max_physical_requests: 0
+        max_configured_rmb: 0
+      fallback: false
+
+    qwen3.8-27b:
+      manifest_id: qwen3.8-27b
+      provider_authority: alibaba_model_studio
+      # 北京公共 DashScope 域名仍获官方支持，并兼容同地域业务空间 API Key。
+      # 本次选择测试沿用项目既有地址，不要求控制台登录或 workspace ID。
+      base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      host: dashscope.aliyuncs.com
+      region: cn-beijing
+      workspace_authority_id: alibaba-dashscope-cn-beijing-public
+      exact_model_id: qwen3.8-27b
+      credential_source_id: dashscope_api_key
+      transport: openai_chat_completions
+      completion_limit_wire_field: max_completion_tokens
+      structured_mode: json_object_local_schema
+      context_window: 1000000
+      tiers:
+        low:
+          provider_input_guard_tokens: 131072
+          max_completion_tokens: 12096
+          temperature: 0.7
+          thinking_request:
+            enable_thinking: true
+            thinking_budget: 4096
+            preserve_thinking: false
+        medium:
+          provider_input_guard_tokens: 524288
+          max_completion_tokens: 24384
+          temperature: 0.7
+          thinking_request:
+            enable_thinking: true
+            thinking_budget: 16384
+            preserve_thinking: false
+        xhigh:
+          provider_input_guard_tokens: 524288
+          max_completion_tokens: 40768
+          temperature: 0.7
+          thinking_request:
+            enable_thinking: true
+            thinking_budget: 32768
+            preserve_thinking: false
+      input_price_rmb_per_million: 3
+      output_price_rmb_per_million: 12
+      cache_billing_policy: no_discount
+      selection_test:
+        activity_scope: selection_test
+        max_physical_requests: 0
+        max_configured_rmb: 0
+      fallback: false
+
+
+writer_profiles:
+
+  # 本地 Qwen 主力 profile(P3 默认)
+  # 对应 docs/local_llm_config.md:qwen-novel(基于 qwen3.5:35b),
+  # ollama 原生 API + think:false 顶层参数(P3-plan 决策 6 选 A)
+  local_qwen_32k:
+    provider: ollama
+    model: qwen-novel
+    base_url: http://localhost:11434
+    context_window: 24576       # 对齐 docs/modelfiles/qwen-novel.modelfile num_ctx 24576
+    generation_params:
+      temperature: 0.7
+      num_predict: 4096          # ollama 字段名(对应 OpenAI max_tokens)
+    extra_request_kwargs:
+      think: false               # ollama 原生扩展,关闭 thinking mode
+    cost_per_1k_input: 0.0       # 本地推理无 API 成本
+    cost_per_1k_output: 0.0
+    cost_currency: USD
+    notes: "P3 默认 profile;本地 ollama qwen-novel,think:false"
+
+  # 本地 Qwen 短上下文 profile(供 MemoryExtractor / continuity / reranker 节省 KV cache)
+  local_qwen_safe:
+    provider: ollama
+    model: qwen-novel
+    base_url: http://localhost:11434
+    context_window: 16000
+    generation_params:
+      temperature: 0.5
+      num_predict: 2048
+    extra_request_kwargs:
+      think: false
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+    cost_currency: USD
+    notes: "短上下文 profile,供 MemoryExtractor / continuity 等结构化输出 agent"
+
+  # 本地 Qwen 低温审稿 profile(P7-B-06 引入,供 Reviewer + must_achieve_validator)
+  # 与 local_qwen_safe 的区别:温度 0.3(更稳)而非 0.5,专给 Reviewer 6 维度打分 +
+  # must_achieve 独立 yes/no 这类"结果稳定性敏感"任务用。
+  # P7-acceptance-rerun2 实测 reviewer 复用 local_qwen_32k(temp=0.7)导致评分抖动
+  # 3.55-9.175 区间;切到 temp=0.3 后期望抖动收敛(实证留 P7-B-06 实证会话)。
+  local_qwen_reviewer:
+    provider: ollama
+    model: qwen-novel
+    base_url: http://localhost:11434
+    context_window: 16000
+    generation_params:
+      temperature: 0.3
+      num_predict: 2048
+    extra_request_kwargs:
+      think: false
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+    cost_currency: USD
+    notes: "P7-B-06 引入,Reviewer + must_achieve_validator 低温稳分专用 profile"
+
+  # 云端高质量 profile(对齐 PROJECT_SPEC §7 字面)
+  cloud_quality:
+    provider: claude
+    model: claude-sonnet-4-6
+    context_window: 200000
+    generation_params:
+      temperature: 0.85
+      max_tokens: 6000
+    cost_per_1k_input: 0.003
+    cost_per_1k_output: 0.015
+    cost_currency: USD
+    notes: "Claude Sonnet 4.6,云端默认质量;维护人无 API key 时不会被路由命中"
+
+  # 云端最高质量 profile(arc_finale / 高张力章升级)
+  cloud_premium:
+    provider: claude
+    model: claude-opus-4-7
+    context_window: 200000
+    generation_params:
+      temperature: 0.85
+      max_tokens: 8000
+    cost_per_1k_input: 0.015
+    cost_per_1k_output: 0.075
+    cost_currency: USD
+    notes: "Claude Opus 4.7,arc_finale / tension>=9 升级路径;P3 维护人本机不实跑"
+
+  # 云端通义千问 qwen3.8-max 中等思考 profile。thinking_budget 与
+  # input_token_budget 都是显式、有界预算；后者只由本地 client 预检消费，
+  # 不会发给 Provider，也不会截断 prompt。
+  # 费用口径（2026-08-23 按维护人价格截图复核）：当前生产走实时流式
+  # /chat/completions，不是 Batch Chat / Batch File，因此限时 5 折的
+  # ¥6/¥18 每百万 token 不适用。无免费额度时仍按普通输入 ¥12/百万、输出
+  # ¥36/百万作 configured safety estimate；缓存命中量未被 Provider usage
+  # 明确返回前，不预扣缓存优惠。
+  # 通过 OpenAICompatibleClient 走 dashscope OpenAI 兼容 API + SSE stream
+  # + reasoning_content 拆分(思考内容只入 structlog 不入 message_history)
+  # 主仓 .env 需配 DASHSCOPE_API_KEY;不命中此 profile 时不消耗 key
+  cloud_qwen_max_thinking:
+    provider: openai_compatible
+    model: qwen3.8-max
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    context_window: 1000000
+    generation_params:
+      temperature: 0.7
+      max_tokens: 8000
+    extra_request_kwargs:
+      enable_thinking: true
+      preserve_thinking: false   # 3.8 provider 默认 true；显式关掉以保持既有无思维链历史行为
+      thinking_budget: 16384
+      input_token_budget: 524288
+    cost_per_1k_input: 0.012     # 普通实时输入 ¥12/百万；无免费额、不预支缓存/Batch 折扣
+    cost_per_1k_output: 0.036    # 普通实时输出 ¥36/百万；Batch Chat 限时 5 折不适用
+    cost_currency: RMB
+    notes: "qwen3.8-max + medium thinking(16K) + 512K local input guard + preserve_thinking off;给复杂语义 Judge/出卡用"
+
+  # 兼容用 standard profile：继续显式关闭 thinking，供历史工作区/手工覆盖解析。
+  # 当前生产 agent_routing 不引用它；机械 trim 在 active Writer profile 上做
+  # 单次 enable_thinking=false 覆盖，不靠本 profile 偷换 Writer 路由。
+  cloud_qwen_max_standard:
+    provider: openai_compatible
+    model: qwen3.8-max
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    context_window: 1000000
+    generation_params:
+      temperature: 0.85
+      max_tokens: 8000
+    extra_request_kwargs:
+      enable_thinking: false
+      preserve_thinking: false
+      input_token_budget: 524288
+    cost_per_1k_input: 0.012
+    cost_per_1k_output: 0.036
+    cost_currency: RMB
+    notes: "兼容 profile;qwen3.8-max thinking off + 512K local input guard + preserve_thinking off;当前生产路由不引用"
+
+  # Writer/Reviser/MemoryExtractor 保留原 0.85 温度，但开启中等思考。
+  cloud_qwen_max_medium_creative:
+    provider: openai_compatible
+    model: qwen3.8-max
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    context_window: 1000000
+    generation_params:
+      temperature: 0.85
+      max_tokens: 8000
+    extra_request_kwargs:
+      enable_thinking: true
+      preserve_thinking: false
+      thinking_budget: 16384
+      input_token_budget: 524288
+    cost_per_1k_input: 0.012
+    cost_per_1k_output: 0.036
+    cost_currency: RMB
+    notes: "qwen3.8-max + medium thinking(16K) + 512K local input guard;Writer/Reviser/MemoryExtractor 原温度 0.85"
+
+  # 全书规划与 mini plan：当前保守输入峰值约 50.6K，512K guard 留约 10 倍余量。
+  cloud_qwen_max_xhigh:
+    provider: openai_compatible
+    model: qwen3.8-max
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    context_window: 1000000
+    generation_params:
+      temperature: 0.7
+      max_tokens: 8000
+    extra_request_kwargs:
+      enable_thinking: true
+      preserve_thinking: false
+      thinking_budget: 32768
+      input_token_budget: 524288
+    cost_per_1k_input: 0.012
+    cost_per_1k_output: 0.036
+    cost_currency: RMB
+    notes: "qwen3.8-max + bounded xhigh thinking(32K) + 512K local input guard;给 outline_builder/mini_plan_generator 用"
+
+  # 轻量语义检查：保留原 0.7 温度，4K 思考足够做窄判定；128K guard 覆盖
+  # 当前最高约 24.1K 的保守输入上界至少 5.4 倍。
+  cloud_qwen_max_low_thinking:
+    provider: openai_compatible
+    model: qwen3.8-max
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    context_window: 1000000
+    generation_params:
+      temperature: 0.7
+      max_tokens: 8000
+    extra_request_kwargs:
+      enable_thinking: true
+      preserve_thinking: false
+      thinking_budget: 4096
+      input_token_budget: 131072
+    cost_per_1k_input: 0.012
+    cost_per_1k_output: 0.036
+    cost_currency: RMB
+    notes: "qwen3.8-max + low thinking(4K) + 128K local input guard;给窄语义 validator/auditor 用"
+
+  # 轻量抽取/检索保持原 0.85 温度，仅新增 4K 思考防长提示漏项。
+  cloud_qwen_max_low_standard:
+    provider: openai_compatible
+    model: qwen3.8-max
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    context_window: 1000000
+    generation_params:
+      temperature: 0.85
+      max_tokens: 8000
+    extra_request_kwargs:
+      enable_thinking: true
+      preserve_thinking: false
+      thinking_budget: 4096
+      input_token_budget: 131072
+    cost_per_1k_input: 0.012
+    cost_per_1k_output: 0.036
+    cost_currency: RMB
+    notes: "qwen3.8-max + low thinking(4K) + 128K local input guard;给 continuity/reranker/chapter_summary_extractor 用"
+
+  # PARKED / 历史实验资产(v2 W3.5 任务A,2026-07-04):
+  # DeepSeek profile 保留给旧 acceptance、旧测试、成本标定和后续离线对照解析;
+  # **生产 agent_routing 不再引用 cloud_deepseek_***。原因:v5 主流程第 4 章已暂停为
+  # ``chapter_escalated / rewrite_budget_exhausted``,DeepSeek 在硬约束密集长篇主链路中
+  # 持续破坏 must/forbidden/setting/style 等约束。回退 Qwen 是恢复可控性,不代表质量验收。
+  # enable_thinking=false 对齐历史 OFF 基线 cloud_qwen_max_standard;reasoning 模型必须显式
+  # 关 thinking,否则可能输出思考链污染正文。
+  # ⚠️ caveat:deepseek-v3 系 2026-07-09 在百炼退役;v4-pro 在线可用,退役另议迁移。
+  # cost_per_1k:**已落真实定价**(维护人 2026-06-15 百炼控制台确认 = 输入 ¥3 / 输出
+  #   ¥6 每百万 tokens RMB)→ 换算 USD/1k(÷ 汇率 ~7.2):in ¥0.003/1k ÷7.2 ≈ 0.00042 /
+  #   out ¥0.006/1k ÷7.2 ≈ 0.00083。比原占位 0.004/0.012 低约 10x —— deepseek 其实很
+  #   便宜,利好 w4-s1 大跑 cost_guard 准确度(原占位会高估成本 10x)。
+  cloud_deepseek_v4_pro:
+    provider: openai_compatible
+    model: deepseek-v4-pro
+    base_url: https://api.deepseek.com   # v2 W3.5-S3(2026-06-24):deepseek 切官网 endpoint(key 由 factory 按 base_url 选 deepseek_api_key;qwen 仍 dashscope)
+    # 真实规格(维护人 2026-06-16 百炼控制台截图核实):最大输入/上下文 1M、最大输出
+    # 384K、RPM 15000 / TPM 1.2M。W3.5-s2 修正 s1 初稿占位错值 131072→1000000(对齐 1M);
+    # 输出上限 384K ≫ 当前 qwen 128K；此处只保留冻结历史规格对照。
+    context_window: 1000000
+    generation_params:
+      temperature: 0.85          # healing/各风格走 router 路径时被 style_template 温度覆盖
+      max_tokens: 8000           # ≤5000 字目标(~5000 输出 token)+ 充足收尾余量;不设更低防中途截断(控长度靠 writer.md v12 prompt + word_count 硬闸,非 max_tokens 硬截)
+    extra_request_kwargs:
+      enable_thinking: false     # deepseek-v4-pro 是 reasoning 模型,必须显式关 thinking(否则输出思考链污染正文 + 浪费 token)
+    cost_per_1k_input: 0.00042   # 真实定价 ¥3/百万 ÷7.2(百炼 RMB,维护人 2026-06-15 确认)
+    cost_per_1k_output: 0.00083  # 真实定价 ¥6/百万 ÷7.2
+    cost_currency: USD           # 上述数值已经按注释汇率换算为 USD
+    notes: "PARKED历史实验资产;生产agent_routing不引用cloud_deepseek_*;thinking off;镜像cloud_qwen_max_standard。真实规格 输入/上下文1M / 输出384K(百炼2026-06-16)"
+
+  # PARKED / 历史实验资产:DeepSeek thinking profile 镜像 cloud_qwen_max_thinking,
+  # 保留用于旧数据解析和离线对照;生产 judge/outline/card/reviewer 均回
+  # cloud_qwen_max_thinking。
+  cloud_deepseek_v4_pro_thinking:
+    provider: openai_compatible
+    model: deepseek-v4-pro
+    base_url: https://api.deepseek.com   # v2 W3.5-S3(2026-06-24):deepseek 切官网 endpoint(key 由 factory 按 base_url 选 deepseek_api_key;qwen 仍 dashscope)
+    context_window: 1000000      # 真实 1M(百炼 2026-06-16);同 cloud_deepseek_v4_pro
+    generation_params:
+      temperature: 0.7           # 镜像 cloud_qwen_max_thinking(非 standard 的 0.85)
+      max_tokens: 8000
+    extra_request_kwargs:
+      enable_thinking: true      # 镜像 qwen_thinking;judge 硬护栏要求 thinking on
+    cost_per_1k_input: 0.00042   # 同 cloud_deepseek_v4_pro 真实定价 ¥3/百万 ÷7.2
+    cost_per_1k_output: 0.00083  # ¥6/百万 ÷7.2
+    cost_currency: USD           # 上述数值已经按注释汇率换算为 USD
+    notes: "PARKED历史实验资产;生产agent_routing不引用cloud_deepseek_*;thinking on;镜像cloud_qwen_max_thinking"
+
+  # mock profile,LLM_PROVIDER=mock 时所有路由命中本 profile
+  # cost = 0,model_used 拼装时挂 ``mock-`` 前缀(由 MockLLMClient 处理)
+  mock_default:
+    provider: mock
+    model: mock-default
+    context_window: 16000
+    generation_params: {}
+    extra_request_kwargs: {}
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+    cost_currency: USD
+    notes: "mock provider,单测 / 离线开发用"
+
+
+writer_routing:
+  # 默认 profile:v1.0.x wave 6 s2.5 起切云端 dashscope Qwen Max；
+  # 2026-08-16 活动模型已原位升级为 qwen3.8-max；随后按实际调用负载
+  # 改为分层 thinking，默认 Writer 使用 medium creative profile。
+  # 与 .env LLM_PROVIDER=openai_compatible 对齐,Router provider-mismatch
+  # fallback 不再触发(原"主仓默认本地 + .env 云端"silent 不一致解除)。
+  # 切回本地:需按 Agent 类型逐项改回相应 local_qwen_* profile，
+  # 同步 .env 改 LLM_PROVIDER=ollama。
+  default: cloud_qwen_max_medium_creative
+
+  # Writer 特殊路由规则(原 PROJECT_SPEC §7 两条;v1.1 w4 B1 起 §7 已同步置空,见段末):
+  # arc_finale 与高张力章升级 cloud_premium。维护人本机无 API key,
+  # 命中时 Router provider-mismatch fallback 自动降级到 default
+  # (cloud_qwen_max_medium_creative),不会因 ClaudeClient 缺 key 抛错。
+  # v1.1 wave 4 acceptance(2026-06-02 维护人拍板):去掉"finale/高张力 → claude
+  # 优先"遗留设计。维护人环境只有 dashscope、无 Claude key,这两条 cloud_premium
+  # 规则原靠"无 key fallback"兜底,但 .env 里一个无效 CLAUDE_API_KEY(非空但 401)
+  # 骗过 _is_provider_usable(只验非空不验有效)→ B1 ch-3(arc_finale)硬崩 401。
+  # 维护人指示:"提供什么云端 API 就用什么",不需要高张力 claude 优先 → 清空规则,
+  # finale/高张力章统一走 agent_routing.writer 默认
+  # (cloud_qwen_max_medium_creative / dashscope)。
+  # v1.1 wave 4 B1(2026-06-03 维护人拍板"全局移除"):从 acceptance 局部扶正为引擎默认 —
+  # PROJECT_SPEC §7 + 本 config + test_config_yaml 三处同步置空 rules,引擎默认从此无
+  # claude 优先(对齐维护人永久无 claude key 环境),任何书 finale 章不再撞 S1。
+  rules: []
+
+  # v1.0.x wave 6 s2.5(2026-05-25):agent_routing 全量切云端(创作 + 审稿
+  # 全走 dashscope Qwen Max),保留 4 个"向量库相关"agent 配置层指向
+  # 本地 profile。
+  #
+  # **v1.1 wave 2 H2(2026-05-28)起真混跑解锁** ✅(原 "运行时 Router
+  # fallback 把这 4 个 silent 升级到云端 default" 约束已解除):Router 改按
+  # API key 可用性判 fallback(详 src/core/routing/router.py:
+  # _is_provider_usable),ollama 本地总可用 → 4 个 agent 真走本地 profile
+  # 不被升级;工厂层 post-wave5 H1 已建多 provider 共存路径。
+  #
+  # **v1.1 wave 2 config-unify-cloud(2026-05-28)** ✅:14 个 agent **全量
+  # 切云端** dashscope Qwen Max,**取消 4 个向量库相关 agent 的本地 ollama
+  # 路径**。
+  #
+  # **v1.1 wave 2 thinking-fix-a(2026-05-28,本次修正)**:前一笔
+  # config-unify-cloud 把 memory_extractor + continuity 隐式从"think 关"
+  # (旧 local_qwen_safe `think: false`)改成"think 开"(cloud_qwen_max_thinking
+  # `enable_thinking: true`),**未经维护人拍板**。维护人 push back 后选 A:
+  # **严格只切 provider 不动 thinking** — 4 个向量库相关 agent 全切到
+  # cloud_qwen_max_standard(thinking off,对齐旧 ollama think: false 行为)。
+  # dashscope reasoning chars 账单不上升;真要 thinking on 单独议题拍板。
+  #
+  # **维护人动机**(本会话 + 修正):后续开发期 14 个 agent 行为统一可预测,
+  # 避免不同 provider 间行为差异造成调试盲点;**thinking on/off 维持旧行为**
+  # (本会话只切 provider,不隐式改 thinking)。
+  # **切回本地混跑**:把下面 4 个 cloud_qwen_max_standard 改回 local_qwen_*
+  # (memory_extractor / continuity / reranker → local_qwen_safe,
+  # chapter_summary_extractor → local_qwen_32k),H2.5 真混跑解锁路径自动生效。
+  # **2026-08-16 后继裁决**:上述 thinking-fix-a 是当时“只换 Provider”的历史
+  # 边界；qwen3.8-max 独立评估获批后，当前活动语义路由已按真实负载显式
+  # 分配 bounded xhigh / medium / low，且全部 preserve_thinking=false。
+  # chapter_card_batch_by_beat 已退役，不再占活动 route/profile。
+  # 与原 luo-cloud-test workspace 级 project.yaml 同款配置上调到引擎默认。
+  agent_routing:
+    # ==== v2 W3.5 任务A DeepSeek 生产路由回退(2026-07-04)====
+    # active 生产路由一律回 Qwen，并按真实负载分 bounded xhigh / medium / low；
+    # DeepSeek profile 保留为 parked 历史实验资产,但
+    # 本段不得引用 cloud_deepseek_*。
+    # 实证:v5 主流程第 4 章已暂停为 chapter_escalated / rewrite_budget_exhausted;
+    # DeepSeek 持续破坏 must/forbidden/setting/style 等硬约束。
+    # 伪合理化自检:回 Qwen 只恢复可控 baseline,不等于质量验收;后续仍需 B-F 重构
+    # 和干净 12 章主流程验收。
+    writer: cloud_qwen_max_medium_creative
+    reviser: cloud_qwen_max_medium_creative
+    chapter_card_generator: cloud_qwen_max_thinking
+    mini_plan_generator: cloud_qwen_max_xhigh
+    outline_builder: cloud_qwen_max_xhigh
+    reviewer: cloud_qwen_max_thinking
+    continuity_validator: cloud_qwen_max_low_thinking
+    must_achieve_validator: cloud_qwen_max_thinking
+    beat_alignment_validator: cloud_qwen_max_thinking
+    must_vs_forbidden_validator: cloud_qwen_max_thinking
+    plot_thread_merger: cloud_qwen_max_thinking
+    character_disambiguator: cloud_qwen_max_thinking
+    timeline_entry_merger: cloud_qwen_max_thinking
+    style_auditor: cloud_qwen_max_low_thinking
+    mechanism_consistency_validator: cloud_qwen_max_thinking
+    thread_closure_validator: cloud_qwen_max_thinking
+    identity_coverage_validator: cloud_qwen_max_thinking
+    setting_consistency_validator: cloud_qwen_max_thinking
+    scene_anchor_validator: cloud_qwen_max_thinking
+    cross_chapter_dedup_validator: cloud_qwen_max_low_thinking
+    ending_tension_validator: cloud_qwen_max_low_thinking
+    volume_seam_replay_validator: cloud_qwen_max_thinking
+    must_feasibility_validator: cloud_qwen_max_thinking
+    outline_consistency_validator: cloud_qwen_max_thinking
+    forbidden_crossing_validator: cloud_qwen_max_thinking
+    memory_extractor: cloud_qwen_max_medium_creative
+    continuity: cloud_qwen_max_low_standard
+    reranker: cloud_qwen_max_low_standard
+    chapter_summary_extractor: cloud_qwen_max_low_standard
+    # reviewer_escalation 故意不填:决策 4 选 A,默认 disable;
+    # 工作区 project.yaml 覆盖此字段为 cloud_quality 时才启用边界升 Claude
+
+
+# ===========================================================
+# 成本守卫(P4-B-08 引入)
+# ===========================================================
+#
+# 对齐 OBSERVABILITY §3.4 字面字段。
+# 加载入口:src/services/cost_guard.py:load_cost_guard_config
+# 单元判定:src/services/cost_guard.py:evaluate_cost_guard
+#
+# 维护人无 Claude API key 默认走本地 Qwen(cost=0),阈值仅在切到 claude
+# profile 或导入历史 metrics 时才会命中;**默认值留宽**,真实超限场景由
+# P4-acceptance 真 LLM 验收触发。
+#
+# 字段说明:
+# - daily_usd_limit            : 全工作区合计单日上限(美元;跨工作区聚合
+#                                留观未接,当前恒传 0.0 不触发)
+# - monthly_usd_limit          : 全工作区合计单月上限(美元;同上留观)
+# - per_workspace_daily_limit  : 单工作区成本上限(美元)。
+#                                ⚠️ v2 w2-s2 metrics 修复 B 起语义 = **本书
+#                                累计成本上限**(读数源 SUM(chapters.
+#                                total_cost_usd) 真值账,非当日;字段名保留
+#                                "daily" 为工作区 yaml 覆盖向后兼容)。
+#                                30.0 = 30 章书实测 ~$18(run-accept-v1)×
+#                                1.5 余量;w4 跑 50-100 章前按实测再调。
+# - action_on_exceed           : 触发后行为 — pause | warn | continue
+#                                pause:推 system.alerts + caller 暂停新流水线
+#                                warn :推 system.alerts + 日志告警 + 继续
+#                                continue:仅日志(不推 WS,不暂停)
+# - notify_via                 : 通知通道列表 — log | websocket(空列表禁用通知)
+
+cost_guard:
+  cost_currency: USD             # legacy *_usd_limit 字段按此币种解释；不自动换汇
+  daily_usd_limit: 20.0
+  monthly_usd_limit: 300.0
+  per_workspace_daily_limit: 30.0
+  action_on_exceed: pause
+  notify_via: [log, websocket]
+
+
+# ===========================================================
+# 流水线 Run 配置(v2 w1-s3 引入)
+# ===========================================================
+#
+# 加载入口:src/services/pipeline_service.py:load_pipeline_watchdog_config
+# 数据模型:src/services/pipeline_service.py:PipelineWatchdogConfig
+#
+# 字段说明:
+# - chapter_timeout_seconds : 章级看门狗预算(秒)。批量 Run 中单章处理
+#   (含写前卡生成 + 写章全链路 ~11-13 次串行 LLM 调用)超过该时长 →
+#   watchdog 把 run 标 interrupted(reason=chapter_watchdog_timeout),
+#   章自然留非终态由启动期 reset_stale 自愈。默认 2400(40min,
+#   ≈13 调用 × 600s 单调用超时的保守折算);<= 0 表示禁用看门狗。
+#   不强杀写章线程(Python 线程不可安全强杀)— 只标记可见 + 可 resume。
+
+pipeline:
+  chapter_timeout_seconds: 2400
+
+
+# ===========================================================
+# 章节卡生成器辅助配置(P5-B-06 引入)
+# ===========================================================
+#
+# outline commit 固定只生成当前第一张正式卡并审核；后续卡由正式 Run 在上一章
+# 富记忆成功后逐章生成。批量大小与 beat 粒度已下线，不再是配置项。
+#
+# 加载入口:src/services/card_generator_config.py:load_card_generator_config
+# 消费入口:src/services/chapter_card_service.py
+#
+card_generator:
+  diversification_threshold: 0.5
+  style_controller_enabled: true
+
+
+# ===========================================================
+# Reviewer 阈值配置(P6-B-13 引入)
+# ===========================================================
+#
+# 工作区级默认 reviewer 阈值;工作区 project.yaml 可整段覆盖。
+# 加载入口:src/services/config_service.py:ConfigService.load_reviewer_config
+# 数据模型:src/core/models/reviewer_config.py:ReviewerConfig
+#
+# 与 ChapterCard 单章字段的关系
+# ----------------------------
+# ChapterCard.review_threshold / .revise_threshold 是单章级覆盖;本段是
+# 工作区级默认。运行时优先级 ChapterCard > Workspace > Engine 留 P6-F-08+
+# 接入(本任务只暴露端点 + service 方法,reviewer agent runtime 暂沿用
+# ChapterCard 字段单一来源 — 启动指令字面接力 marker)。
+#
+# 字段说明
+# - pass_threshold          : score_overall >= 即判 pass(对齐 ChapterCard
+#                             review_threshold 默认 7.5)
+# - revise_threshold        : revise_threshold <= score_overall < pass_threshold
+#                             判 revise,低于判 rewrite(默认 6.5)
+# - escalation_lower_bound  : 边界升 Claude 复审下界(闭区间)
+#                             对齐 reviewer.py ESCALATION_LOWER_BOUND 默认 6.0
+# - escalation_upper_bound  : 边界升 Claude 复审上界(闭区间)
+#                             对齐 reviewer.py ESCALATION_UPPER_BOUND 默认 8.0
+
+reviewer:
+  # v1.0.x Commit D(2026-05-20 维护人拍板):pass/revise 默认线降低,与 bug ⑤
+  # tension-aware 4 档 chapter_card 阈值带配合 — 工作区无 project.yaml 显式覆盖时,
+  # _resolve_reviewer_thresholds 优先用 chapter_card 字段(tension-aware),
+  # 这里的引擎默认仅作底层兜底(fixture 未填 chapter_card 字段时)。
+  pass_threshold: 6.5
+  revise_threshold: 5.5
+  escalation_lower_bound: 6.0
+  escalation_upper_bound: 8.0
+
+
+# ===========================================================
+# 检索 top_k 配置(P6-B-14 引入)
+# ===========================================================
+#
+# 工作区级默认检索参数;工作区 project.yaml 可整段覆盖。
+# 加载入口:src/services/config_service.py:ConfigService.load_retrieval_config
+# 数据模型:src/core/models/retrieval_config.py:RetrievalConfig
+#
+# 与 caller 显式传参的关系
+# ------------------------
+# src/core/memory/retriever.py:retrieve_memories_for_chapter 默认 top_k=20;
+# src/core/agents/writer.py:_build_retrieved_memory_section 显式传 top_k=10。
+# 运行时优先级 caller > Workspace > Engine 留 P6-F-08+ 接入(本任务只暴露
+# 端点 + service 方法,caller 链不动 — 启动指令字面接力 marker)。
+#
+# 字段说明
+# - top_k          : 检索命中数上限,对齐 retriever DEFAULT_TOP_K 默认 20
+# - min_similarity : 相似度下界(闭区间);0.0 = 不过滤(默认),> 0.0 时
+#                    按 (1 - distance) >= min_similarity 过滤
+
+retrieval:
+  top_k: 20
+  min_similarity: 0.0
+
+
+# ===========================================================
+# 生成参数配置(v1.1 wave 3 session 3 / L1 Q16 引入)
+# ===========================================================
+#
+# 工作区级默认生成参数;工作区 project.yaml 可整段覆盖。
+# 加载入口:src/services/config_service.py:ConfigService.load_generation_config
+# 数据模型:src/core/models/generation_config.py:GenerationConfig
+#
+# 与 ChapterCard 单章字段的关系
+# ----------------------------
+# ChapterCard.word_count_min/max / .max_rewrites 是单章级值;本段是工作区级
+# 默认。新生成章节卡时 ChapterCardService.derive_context 读本段作兜底
+# (LLM 未给字数时用工作区默认而非 ChapterCard 模型默认);已生成的卡通过
+# POST /workspaces/{id}/chapter-cards:reset-word-count(G6.2 backfill)应用。
+#
+# 字段说明
+# - word_count_min/max : 当前默认 2500–3500，仍是 Writer 的正常任务要求。
+# - word_count_policy_version : 2 为约数目标（min=max），1 为范围要求；均不按字数拒稿、扣分、压缩或补写；0 兼容旧活动。
+#     下面的 2026-06-15 长度校准说明属于 v0 历史，不适用于当前 v1 写后策略：
+#     docs/acceptance/v2_w3_s4_length_antistamp.md),故 5000 随 W3.5 cutover 一起落。
+# - max_rewrites   : 新生成章节卡整章重写次数上限默认(对齐 ChapterCard 默认 3)
+#
+# 注:temperature 不在本段 —— 它归 v1.1 I 类写作风格模板系统(I2)按风格
+# 分工种智能设置;L1 一刀切覆盖会与 I2 重复 / 冲突,故 L1 不做 temperature。
+
+generation:
+  # 2026-10-02 维护人批准：篇幅要求与其他任务同权重，写后不作字数硬拦截。
+  word_count_min: 2000
+  word_count_max: 2000
+  word_count_policy_version: 2
+  max_rewrites: 3
+  core_state_hard_enabled: true  # post-v6 Session 3/C；关闭时新卡沿用 legacy v0，不自动回填
+
+
+# ── 模型校准 profile(W3.5-s2 引入)────────────────────────────────────────
+# 三层架构(plan §1)的 **③ 模型校准层**:一套 robust 机制(①②层)+ **每模型一组
+# 实测数字**。校准套件 scripts/v2_w3_5_s2_calibration_suite.py 喂固定语料实测后产出;
+# 引擎按 **模型名**(非 profile id;多 profile 共享同模型校准)load。
+# 消费方:s3 拆章读 per_genre[原型].chars_per_beat / s5 路由+UI 按 model id load(未命中警告)。
+# loader = src/core/config_loader.load_model_calibration;schema = ModelCalibration。
+# 工作区 project.yaml 可整段覆盖(同 routing 语义);段缺失 = 优雅空(消费方按 model 警告)。
+model_calibration:
+  # qwen3.8-max 长度校准（W3.5-R9 v6 §2.143，2026-08-17 本地活动；
+  # result calibrated_at 使用 UTC 日期 2026-08-16）。12 个当前 Writer v19 新样本，
+  # medium thinking 16K、preserve_thinking=false；报告见
+  # docs/acceptance/v2_w3_5_r9_qwen38_length_calibration_v1_completion_report.md。
+  qwen3.8-max:
+    calibrated_at: "2026-08-16"
+    calibration_corpus: "length-only fresh Writer v19 outputs; heal-off-v1 + luo-accept-v2 fixed cards ch-0004..0009 (6+6)"
+    global:
+      length_tendency: balanced       # 12 章仅 2 章 >5000；不系统性开启超长 trim
+      anti_stamp_strength: medium     # regex high 仅诊断；无真人/Reviewer 证据，不自动开启 anti-tic trim
+      recommended_temperature: 0.85  # 保持当前 Writer profile 温度；治愈语料仍按风格覆盖 0.75
+      thinking_default: true          # 保持当前 Writer medium thinking 16K
+      reviewer_threshold_adjustment: 0.0  # 本活动未调用 Reviewer；中性保留，不冒充阈值校准
+    per_genre:
+      introspection:
+        chars_per_beat: 1352          # 4056 / 3 个 plot_node_budget 内容单元
+        chars_per_chapter: 4056
+        length_compliance: 0.667      # ≤5000 为 4/6
+        content_units_per_chapter: 3.0
+        sample_chapters: 6
+      action:
+        chars_per_beat: 1088          # 3265 / 3 个 plot_node_budget 内容单元
+        chars_per_chapter: 3265
+        length_compliance: 1.0        # ≤5000 为 6/6
+        content_units_per_chapter: 3.0
+        sample_chapters: 6
+
+  # deepseek-v4-pro 首基线(W3.5-s2,2026-06-16)
+  # 来源:固定语料 modelab_drafts 离线实测(长度/守闸/tell密度,零 LLM 可复现)+
+  #   reviewer 兼容真 LLM(W3.5-s2 批准点①,deepseek tight v12 臂 12/12 pass、漂移
+  #   introspection +0.13 / action +0.00 ≥ qwen 基线 8.54/8.49,成本 $1.348)。
+  # 报告:docs/acceptance/v2_w3_5_s2_calibration_deepseek-v4-pro_*.md。
+  deepseek-v4-pro:
+    calibrated_at: "2026-06-16"
+    calibration_corpus: "heal-off-v1 + luo-accept-v2 modelab_drafts(各 6 章,deepseek w3s4_tight v12 臂)"
+    global:
+      length_tendency: overshoot      # 守闸率得到:多数动作章超 5000(deepseek 偏写长;qwen 偏 undershoot)
+      anti_stamp_strength: high       # 权威依据 = w3-s3/w3-s4 读者盲读(~10-20% tell残留);regex 支撑(未处理峰值 0.44 > qwen 0.29)
+      recommended_temperature: 0.85   # cloud_deepseek_v4_pro standard 温度锚
+      thinking_default: false         # writer/生成路径;outline/card/judge 走 _thinking 兄弟 profile(镜像 qwen 方针)
+      reviewer_threshold_adjustment: 0.0  # W3.5-s2 真 LLM 确认:deepseek 12/12 pass、漂移 ≥0(+0.13/+0.00)→ 无需降阈
+    per_genre:
+      introspection:                  # heal 型(治愈/内省):tell 长 show 短,chars/beat 低 → s3 不触发额外拆章
+        chars_per_beat: 1534          # = chars_per_chapter / content_units(4602/3)
+        chars_per_chapter: 4602       # 实测均值(deepseek v12 tight 臂)
+        length_compliance: 0.667      # ≤5000 守闸率(4/6)
+        content_units_per_chapter: 3.0  # plot_node_budget 实测恒定
+        sample_chapters: 6
+      action:                         # luo 型(动作/悬疑):show 是逐招演出,chars/beat 高 → s3 触发拆章
+        chars_per_beat: 1788          # = 5364/3
+        chars_per_chapter: 5364       # 实测均值;> 5000 → 动作题材系统性超闸(w3-s4 题材长度反号发现)
+        length_compliance: 0.333      # ≤5000 守闸率(2/6)→ s3 拆章靶子
+        content_units_per_chapter: 3.0
+        sample_chapters: 6

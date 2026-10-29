@@ -1,0 +1,8 @@
+def _append_feedback(user_text: str, feedback: str) -> str:
+    """把反馈消息追加在 user_text 末尾。
+
+    用 ``\\n\\n---\\n\\n`` 分隔,让 LLM 视觉上能清楚区分"原任务"和"上次错误反馈"。
+    多轮 retry 时反馈累加(不替换),让 LLM 同时看到所有历史错误以避免重蹈
+    覆辙。
+    """
+    return f"{user_text}\n\n---\n\n{feedback}"

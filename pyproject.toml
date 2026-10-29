@@ -1,0 +1,60 @@
+[project]
+name = "novel-engine"
+version = "0.1.0"
+description = "Local long-form fiction authoring engine with planning, review, and cross-chapter memory"
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "alembic>=1.18.4",
+    "anthropic>=0.97.0",
+    "chromadb>=1.5.9",
+    "ebooklib>=0.20",
+    "fastapi>=0.136.1",
+    "httpx>=0.28.1",
+    "jieba>=0.42.1",
+    "json-repair>=0.30.0",
+    "pydantic>=2.13.3",
+    "pydantic-settings>=2.14.0",
+    "python-docx>=1.2.0",
+    "python-dotenv>=1.2.2",
+    "pyyaml>=6.0.3",
+    "ruamel-yaml>=0.19.1",
+    "sentence-transformers>=2.7.0",
+    "sqlalchemy>=2.0.49",
+    "structlog>=25.5.0",
+    "transformers>=4.51.0",
+    "uvicorn[standard]>=0.46.0",
+]
+
+[project.scripts]
+novel = "src.cli.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.20.2",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+    "ruff>=0.15.12",
+]
+
+[tool.pytest.ini_options]
+# 默认排除 integration mark:集成测试需要真实外部依赖(如 CLAUDE_API_KEY),
+# 默认 `uv run pytest` 不跑;显式 `uv run pytest -m integration` 才执行。
+addopts = "-m 'not integration'"
+filterwarnings = [
+    # 第三方 jieba 0.42.1 在 Python 3.11/pytest 9 下的 import-time 噪声。
+    # 仅按来源过滤,不得扩大到项目自身 warning。
+    "ignore:invalid escape sequence.*:DeprecationWarning:jieba(\\.|$).*",
+    "ignore:pkg_resources is deprecated as an API.*:UserWarning:jieba\\._compat",
+]
+markers = [
+    "integration: 需要真实外部服务(LLM API、网络等)的集成测试,默认跳过。",
+]

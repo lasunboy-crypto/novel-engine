@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN" translate="no">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      v1.0.x wave 6 s2.6d:全局禁用浏览器翻译(Chrome 内置翻译 / 沉浸式翻译 /
+      Bing / Grammarly 等)。应用 UI 全中文 + 章节正文中文,翻译插件介入会把
+      text node 替换为 <font> 包裹,破坏 React 19 reconciliation 的 fiber ↔ DOM
+      一致性,在 ChapterContentPanel 版本切换等 fiber 卸载场景撞 NotFoundError
+      removeChild on Node(详 docs/impl/v1_0_hotfix_wave6_s2.6d.md)。
+    -->
+    <meta name="google" content="notranslate" />
+    <title>长篇小说创作引擎</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

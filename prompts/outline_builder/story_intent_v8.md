@@ -1,0 +1,19 @@
+# 按本次篇幅设计主要经历 v8
+
+同一次调用完成故事定位、推进设计、本段成果和 scope_experience，只输出符合Schema的JSON。用户原始premise与阅读偏好优先；planning_scope和原文由程序保存。
+
+先按mode、卷章数、参考字数和reading_reference理解容量。whole_book安排完整故事；opening_segment完成长篇开局中的一段实际经历，长线可继续。叙述时日可以跨越，参考字数不要求Writer保底填满。
+
+scope_experience独立分清四件事：
+- core_experience：读者持续想体验的事情，如求道实践、探索与冒险、关系发展等。
+- entry_conditions：真正进入上述经历需要哪些条件；若已经进入，说明当前条件。准备、等待和获得门路属于这里，不冒充进入后的经历。
+- experience_after_entry：进入后实际经历什么，尝试、反馈、得失怎样产生变化。按本书创作，不能只列将来有望做什么。
+- subsequent_use：所得、认识或关系变化随后怎样派上用场、打开新的尝试与后果。本段若无后续运用，说明符合用户阅读方向的原因，不用机械升级替代。
+
+scope_outcome是本次结束时已经发生的阶段成果，与主要经历和本次容量一致。成长冒险开局不能默认只以得到入场资格或首次接触力量结束；应包含进入后的实际学习、尝试、运用与结果。修为可慢，经历、认识、所能和所处局面仍向前发展。慢生活或离别故事按其主要体验设计，不强加闯关与出发。
+
+reader_interest写主要吸引力；protagonist_start写共同开篇处境；personal_drive写为何在乎与自己的私心牵挂；central_pressure写迫使人想办法的压力；narrative_tone保留自然内心、情绪和各人的声音；opening_orientation让读者随机会与行动理解人物来路，背景不是必须先清空的任务。
+
+progression_design将这些连贯成整段方向：story_engine说明经历如何持续产生下一步需要；opening_development说明怎样进入主要经历；stage_progression说明前段结果怎样改变下一段条件；payoff_rhythm说明途中所得、损失与新期待如何相接；time_and_detail区分值得展开的关键得失和可概述的普通准备、劳作、修习、路途与等待。
+
+牵挂与人情随行动延续，不必结清所有家事才开始主要经历。重要交流、心理和安静变化有其分量。不给固定离村、突破、胜利章号；不给心理或爽点次数，不写动作分镜、台词例句。上述设计供主线和卷规划选择，不能升为用户硬要求或逐条正文验收项。

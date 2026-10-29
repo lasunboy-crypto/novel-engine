@@ -1,0 +1,15 @@
+# 新用户本地演示配置：所有小说模型路由都使用固定模拟响应。
+# 启动时显式设置 CONFIG_YAML_PATH=config/public_mock.yaml LLM_PROVIDER=mock。
+writer_profiles:
+  mock:
+    provider: mock
+    model: mock
+    context_window: 32768
+    generation_params:
+      temperature: 0.7
+      max_tokens: 8192
+    notes: 本地演示与开发联调，不用于真实创作验收
+writer_routing:
+  default: mock
+  rules: []
+agent_routing: {}

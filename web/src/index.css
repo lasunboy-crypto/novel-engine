@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/**
+ * P1-F-12:章节正文 markdown 排版样式(简版)。
+ *
+ * react-markdown 输出原生 <h1>~<h6> / <p> / <ul> / <ol> / <blockquote> /
+ * <code> / <pre> / <a> 等标签,但不带任何样式。我们不装
+ * `@tailwindcss/typography`(Q2 不在范围),用基础 Tailwind 类写一组最小可
+ * 读样式,P2/P3 真有"小说排版精修"需求时再评估升级。
+ *
+ * 选 `@layer components` 而非内联 className 是因为:
+ * 1. ReactMarkdown 不支持给嵌套子元素直接传 className(需用 `components`
+ *    prop,但那让组件写法复杂)
+ * 2. 排版样式是跨页面可复用的"Markdown 容器"语义,提到全局 CSS 属合理
+ */
+@layer components {
+  .prose-style h1 {
+    @apply mb-4 mt-6 text-2xl font-semibold first:mt-0;
+  }
+  .prose-style h2 {
+    @apply mb-3 mt-6 text-xl font-semibold first:mt-0;
+  }
+  .prose-style h3 {
+    @apply mb-2 mt-5 text-lg font-semibold first:mt-0;
+  }
+  .prose-style h4 {
+    @apply mb-2 mt-4 text-base font-semibold first:mt-0;
+  }
+  .prose-style p {
+    @apply my-3 leading-7 first:mt-0 last:mb-0;
+  }
+  .prose-style ul {
+    @apply my-3 list-disc space-y-1 pl-6;
+  }
+  .prose-style ol {
+    @apply my-3 list-decimal space-y-1 pl-6;
+  }
+  .prose-style blockquote {
+    @apply my-4 border-l-4 border-border pl-4 italic text-muted-foreground;
+  }
+  .prose-style code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-xs;
+  }
+  .prose-style pre {
+    @apply my-3 overflow-auto rounded bg-muted p-3 font-mono text-xs leading-relaxed;
+  }
+  .prose-style pre code {
+    @apply bg-transparent p-0 text-xs;
+  }
+  .prose-style a {
+    @apply text-primary underline underline-offset-2;
+  }
+  .prose-style hr {
+    @apply my-6 border-t border-border;
+  }
+  .prose-style strong {
+    @apply font-semibold;
+  }
+  .prose-style em {
+    @apply italic;
+  }
+}

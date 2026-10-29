@@ -1,0 +1,53 @@
+# Explicit experimental pipeline manifest. Materialize into a new runtime config.
+manifest_id: deepseek-v4-pro
+pipeline_contract: creative_delta_v6
+model_revision: DeepSeek-V4-Pro-0813
+provider_authority: deepseek_official
+base_url: https://api.deepseek.com
+host: api.deepseek.com
+region: deepseek-official-api
+workspace_authority_id: deepseek-official-account
+exact_model_id: deepseek-v4-pro
+credential_source_id: deepseek_api_key
+transport: openai_chat_completions
+completion_limit_wire_field: max_tokens
+structured_mode: json_object_local_schema
+context_window: 1000000
+tiers:
+  low:
+    provider_input_guard_tokens: 131072
+    max_completion_tokens: 12096
+    temperature: null
+    thinking_request:
+      thinking: {type: enabled}
+      reasoning_effort: low
+  medium:
+    provider_input_guard_tokens: 524288
+    max_completion_tokens: 24384
+    temperature: null
+    thinking_request:
+      thinking: {type: enabled}
+      reasoning_effort: high
+  xhigh:
+    provider_input_guard_tokens: 524288
+    max_completion_tokens: 40768
+    temperature: null
+    thinking_request:
+      thinking: {type: enabled}
+      reasoning_effort: high
+prose_generation:
+  provider_input_guard_tokens: 524288
+  max_completion_tokens: 16384
+  temperature: 0.8
+  thinking_request:
+    thinking: {type: disabled}
+# 2026-09-08 官方 Pro-0813 峰值价；不计缓存及闲时折扣。
+# https://api-docs.deepseek.com/zh-cn/quick_start/pricing/
+input_price_rmb_per_million: 9
+output_price_rmb_per_million: 27
+cache_billing_policy: no_discount
+selection_test:
+  activity_scope: selection_test
+  max_physical_requests: 0
+  max_configured_rmb: 0
+fallback: false

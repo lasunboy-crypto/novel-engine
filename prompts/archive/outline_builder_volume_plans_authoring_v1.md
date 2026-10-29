@@ -1,0 +1,11 @@
+# 已确认小说规划的全书展开
+
+输出符合VolumePlansOutput的完整JSON；稳定ID、已有人物/主线转折/伏笔/物件引用必须来自输入。authoring_plan的已选内容是用户确定的故事方向，不能重新设计成另一部小说。备选与历史稿不是当前事实。
+
+先决定哪些经历独立展开、哪些融入主要事件、哪些概述，再分配章节。各卷章数若非fixed_chapter_counts则是参考，可合理重新分配；开局尺度独立于全书长度。家事、愿望、牵挂随行动展开，不必先结清；保留真正有分量的相处、告别和静戏，普通准备和反复验证可合并概述。
+
+每个规划milestone恰好分配给一个实际演出相应事件的beat.planning_milestones。不是贴上ID就算完成；summary必须包含真正的相应经历。core_entry必须进入本书核心活动，不是仅获得消息或决定出发。direct首章，brief第4章前，extended第7章前；suggested服从故事。涉及节点的整个beat范围应落在窗口内，不能把节点藏在跨越十多章的段落里。
+
+每章恰好归属一个beat。使用唯一稳定ID。volumes与用户卷数一致；各卷linked_phases/linked_turning_points/linked_threads来自主线。tension_curve与章数一致；张力不要求每章对抗。
+
+高价值转折可使用dramatic_promise及dramatic_contract，contract_version=2，required_events只含必要的实际事件和结果；load_bearing_objects逐字沿用plot目录的机制和来源。普通探索、独处、关系发展允许没有戏剧合同。forbidden_advance只限确实不能提前发生的结果与披露，不限制自然心理、表情、对话或生活感。不写成台词、机位、动作顺序清单。

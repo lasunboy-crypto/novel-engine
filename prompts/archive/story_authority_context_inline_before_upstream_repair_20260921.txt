@@ -1,0 +1,27 @@
+def render_complete_outline_context(
+    *, world: WorldOutput, characters: CharactersOutput,
+    plot: PlotOutput, volume_plans: VolumePlansOutput,
+) -> str:
+    """终审一次读取四段原文，保留未选物件和普通 beat 的实际约束。"""
+    return (
+        "\n\n## 开篇时间与人物既往权威原文\n"
+        "world.setting 给出共同开篇时点。审核对象是这份原样输入：它能否按各字段"
+        "定义直接交给后续生成。不要先在理解中移动字段、调整时态或补出事实再宣布通过。\n"
+        "\n## 人物字段的开篇档案定义\n"
+        "以下定义与人物生成共用。违反字段用途也是输入错误：背景或关系把主线的未来"
+        "完成结果写进开篇档案时，必须将字段定义与该原句作为两端证据，列入"
+        "contradictions（substantive）。即使能猜出作者要写未来，也不能在审核中"
+        "代为改读后豁免。明确尚未实现的愿望或计划不算已发生；开篇前的真实经历、"
+        "回忆和以后才揭晓的旧事可以保留。\n"
+        + json.dumps({
+            name: CharacterOutlineItem.model_fields[name].description
+            for name in ("background", "motivation", "relationships_brief", "initial_core_facts")
+        }, ensure_ascii=False, indent=2)
+        + "\n## 四段大纲原文\n"
+        + json.dumps({
+            "world": world.model_dump(mode="json"),
+            "characters": characters.model_dump(mode="json"),
+            "plot": plot.model_dump(mode="json"),
+            "volume_plans": volume_plans.model_dump(mode="json"),
+        }, ensure_ascii=False, indent=2)
+    )

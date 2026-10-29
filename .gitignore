@@ -1,0 +1,46 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
+.DS_Store
+data/
+workspaces/
+archives/
+node_modules/
+dist/
+build/
+*.log
+
+# 前端工程(P1-F-01):package.json / src 等入库,产物与依赖不入库
+web/node_modules/
+web/dist/
+
+# Claude 工作目录(launch.json / worktrees link / 临时产物):每个 worktree 临时使用,不入库
+.claude/
+
+# Codex 本地配置 / hooks / worktrees:每台机器本地使用,不入库
+.codex/
+
+# 本地 DeepSeek API key 辅助脚本,不入库
+scripts/set_deepseek_key.sh
+
+# 公开发布与本机隐私文件
+.env.*
+!.env.example
+*.pem
+*.key
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+.coverage*
+htmlcov/
+/public-release/
+/release/
+/logs/
+/config/local.yaml
+/config/local.yml

@@ -1,0 +1,43 @@
+    def _prepare_request_messages(
+        self, messages: list[Message], gen_params: dict[str, Any]
+    ) -> list[Message]:
+        response_format = gen_params.get("response_format")
+        if self._manifest.structured_mode == "native_json_schema_strict":
+            if response_format is None:
+                if strict_contract_from_params(gen_params) is not None:
+                    raise RunModelManifestLockError(
+                        "strict response contract 缺少 response_format"
+                    )
+                return [message.model_copy() for message in messages]
+            contract = strict_contract_from_params(gen_params)
+            if contract is None:
+                raise RunModelManifestLockError(
+                    "Hy3 structured request 缺少本地 strict response contract"
+                )
+            try:
+                assert_hy3_strict_request(
+                    contract=contract,
+                    base_url=self._manifest.base_url,
+                    requested_model=self._manifest.exact_model_id,
+                    response_format=response_format,
+                )
+            except RuntimeError as exc:
+                raise RunModelManifestLockError(
+                    "Hy3 structured schema/name/hash/identity 已漂移"
+                ) from exc
+            return append_strict_json_instruction(messages)
+        prepared = self._prepare_messages(messages, gen_params)
+        local_contract = local_contract_from_params(gen_params)
+        if local_contract is not None:
+            if response_format != {"type": "json_object"}:
+                raise RunModelManifestLockError("本地 JSON 合同缺少 JSON-object 请求")
+            instruction = local_contract.instruction()
+            for index in range(len(prepared) - 1, -1, -1):
+                if prepared[index].role == "user":
+                    prepared[index] = prepared[index].model_copy(
+                        update={"content": prepared[index].content + "\n\n" + instruction}
+                    )
+                    break
+            else:
+                prepared.append(Message(role="user", content=instruction))
+        return prepared

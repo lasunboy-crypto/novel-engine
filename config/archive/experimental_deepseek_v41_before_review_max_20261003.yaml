@@ -1,0 +1,69 @@
+# Explicit experimental pipeline manifest. Materialize into a new runtime config.
+manifest_id: deepseek-flash
+pipeline_contract: creative_delta_v6
+narrative_handoff_version: 1
+model_revision: DeepSeek-V4.1-Flash
+provider_authority: deepseek_official
+base_url: https://api.deepseek.com
+host: api.deepseek.com
+region: deepseek-official-api
+workspace_authority_id: deepseek-official-account
+exact_model_id: deepseek-flash
+credential_source_id: deepseek_api_key
+transport: openai_chat_completions
+completion_limit_wire_field: max_tokens
+# 独立验证 V4.1；2026-09-15 按维护人建议提高复杂设计与判断的思考强度。
+# 旧 V4 的实测校准结果不继承；本文件不代表新版已验收。
+structured_mode: prompt_json_local_schema
+context_window: 1048576
+tiers:
+  low:
+    provider_input_guard_tokens: 131072
+    max_completion_tokens: 12096
+    temperature: null
+    thinking_request:
+      thinking: {type: enabled}
+      reasoning_effort: low
+  medium:
+    provider_input_guard_tokens: 524288
+    max_completion_tokens: 65536
+    temperature: null
+    thinking_request:
+      thinking: {type: enabled}
+      reasoning_effort: high
+  xhigh:
+    provider_input_guard_tokens: 524288
+    max_completion_tokens: 65536
+    temperature: null
+    thinking_request:
+      thinking: {type: enabled}
+      reasoning_effort: high
+# 官方 1,048,576 总上下文同时包含输入和输出。完整预留 393,216 输出时，
+# 单请求最多还能容纳 655,360 输入；这不是人为缩小模型的上下文。
+# 只用于世界/人物/主线/卷规划（含细化与补人）、小纲和章节卡生成。
+upstream_generation:
+  provider_input_guard_tokens: 655360
+  max_completion_tokens: 393216
+  temperature: null
+  thinking_request:
+    thinking: {type: enabled}
+    reasoning_effort: max
+# Restore the approved Writer/Reviser thinking policy. The response budget
+# includes reasoning and prose; reasoning content is never forwarded as prose.
+prose_generation:
+  provider_input_guard_tokens: 655360
+  max_completion_tokens: 393216
+  temperature: null
+  thinking_request:
+    thinking: {type: enabled}
+    reasoning_effort: high
+# 2026-09-13 官方 V4.1 Flash 峰值价；不计缓存及闲时折扣。
+# https://api-docs.deepseek.com/zh-cn/quick_start/pricing/
+input_price_rmb_per_million: 2
+output_price_rmb_per_million: 8
+cache_billing_policy: no_discount
+selection_test:
+  activity_scope: selection_test
+  max_physical_requests: 0
+  max_configured_rmb: 0
+fallback: false

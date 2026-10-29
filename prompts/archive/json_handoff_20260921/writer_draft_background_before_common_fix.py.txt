@@ -1,0 +1,71 @@
+def _build_draft_v3_user_message(
+    *,
+    card: ChapterCard,
+    plan: ExecutableConstraintPlan,
+    setting: SettingContract | None,
+    core_state_projection: CoreStateProjection | None,
+    continuity_capsule: ProvenanceBoundContinuityCapsule | None,
+    auxiliary_sections: tuple[str, ...],
+    scene_handoff: bool = False,
+    causal_handoff: bool = False,
+    draft_include_audit_ids: bool = True,
+) -> str:
+    """组织完整首稿任务；旧首稿/修订渲染路径保持隔离。"""
+    view = build_writer_draft_view(card, plan)
+    progress = (
+        f"张力：{card.tension_level}/10；弧段：{card.arc_phase}；"
+        f"是否弧线终章：{card.is_arc_finale}；剧情节点预算：{card.plot_node_budget}。\n"
+    )
+    if causal_handoff:
+        phase = {
+            "opening": "故事开端",
+            "rising": "冲突发展",
+            "climax": "冲突高潮",
+            "falling": "高潮后的回落",
+            "resolution": "结局收束",
+        }[card.arc_phase]
+        ending = "在此收束" if card.is_arc_finale else "仍将延续"
+        progress = (
+            f"张力：{card.tension_level}/10；叙事进度：{phase}；当前弧段{ending}；"
+            f"剧情节点预算：{card.plot_node_budget}。\n"
+            "叙事进度只用于安排写法，不是人物所知或正文用语；在既定章界内把眼前"
+            "事件的尝试、反馈与选择演完整，不以说明后续安排代替当前行动。\n"
+        )
+    sections = [
+        "## 当前写作任务\n\n"
+        f"标题参考：{card.title}；主视角人物：{card.pov_character}。\n"
+        f"场景：{card.setting}\n"
+        + progress
+        + ("节点预算是剧情推进的软上限，不是动作次数、场次数或段落配额。\n"
+           if scene_handoff else "")
+        +
+        f"正文 {card.word_count_min}—{card.word_count_max} 字符；"
+        f"起草目标约 {(card.word_count_min + card.word_count_max) // 2} 字符。",
+        _format_continuity(
+            card.continuity_context,
+            continuity_capsule=continuity_capsule,
+            frozen_provenance=card.continuity_ledger_provenance,
+            authority_only=True,
+            bridge_scope_limited=causal_handoff,
+        ),
+        view.render(include_audit_ids=draft_include_audit_ids),
+        render_dramatic_context(card),
+    ]
+    if setting is not None and not setting.is_empty:
+        # unique_rules 的完整原文已与 HARD ID 在 view 中绑定；普通世界事实保留。
+        sections.append(
+            "## 世界背景\n\n"
+            f"{setting.setting}\n\n{setting.power_system}"
+        )
+        if setting.unique_rules.strip() and not plan.by_kind("setting_unique_rules"):
+            # 来源未冻结时不能静默丢弃原文，也不能自行补成新的 HARD。
+            sections.append(f"## 补充世界说明\n\n{setting.unique_rules}")
+    if core_state_projection is not None:
+        sections.append(build_writer_authority_sections(
+            chapter_card=card, core_state_projection=core_state_projection
+        ).core_state)
+    sections.extend(auxiliary_sections)
+    sections.append(f"## 收束时可观察的线索、压力或决定\n\n{card.next_chapter_seed}")
+    return append_role_marker(
+        "\n\n".join(section for section in sections if section.strip()), role="writer"
+    )
